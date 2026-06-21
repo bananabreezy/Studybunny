@@ -1,4 +1,3 @@
-HTML
 <!DOCTYPE html> 
 <html lang="en"> 
 <head> 
@@ -14,8 +13,7 @@ body{ margin:0; background:var(--bg); color:var(--text); padding:20px; transitio
 .card{ background:var(--card); padding:20px; border-radius:24px; box-shadow:var(--shadow); margin-bottom:18px; } 
 h1,h2{ margin-top:0; margin-bottom:10px; } 
 .header{ text-align:center; } 
-.bunny{ font-size:4rem; transition: transform 0.3s; } 
-.bunny:hover{ transform: scale(1.1) rotate(5deg); }
+.bunny{ font-size:4rem; } 
 .quote{ font-style:italic; opacity:.8; } 
 .focus-input, .task-input, .settings-input{ width:100%; padding:12px; border:none; border-radius:14px; background:#f7f7f7; margin-top:10px; font-size:1rem; } 
 .settings-group{ display: flex; gap: 10px; margin-bottom: 10px; } 
@@ -23,13 +21,12 @@ h1,h2{ margin-top:0; margin-bottom:10px; }
 .timer{ text-align:center; } 
 .time{ font-size:4rem; font-weight:bold; margin:10px 0; } 
 .mode{ font-size:1.1rem; margin-bottom:15px; } 
-button{ border:none; padding:12px 18px; border-radius:999px; cursor:pointer; margin:4px; font-weight:bold; transition: 0.2s; } 
-button:active{ transform: scale(0.95); }
+button{ border:none; padding:12px 18px; border-radius:999px; cursor:pointer; margin:4px; font-weight:bold; } 
 .start{background:var(--pink);} .pause{background:var(--lav);} .reset{background:var(--blue);} 
 .save-btn{background:var(--green); color: white; width: 100%; margin-top: 10px;}
 .darkbtn{background:#ddd;} 
 .stars{ font-size:1.4rem; text-align:center; } 
-.plant-box{ font-size: 3.5rem; margin: 15px 0; transition: transform 0.5s ease; }
+.plant-box{ font-size: 3.5rem; margin: 15px 0; }
 .task{ display:flex; justify-content:space-between; align-items:center; padding:10px; margin-top:8px; background:rgba(255,255,255,.5); border-radius:12px; } 
 .done{ text-decoration:line-through; opacity:.6; } 
 .progress{ height:14px; background:#eee; border-radius:999px; overflow:hidden; margin-top:15px; } 
@@ -40,8 +37,6 @@ button:active{ transform: scale(0.95); }
 .shop-item.unlocked { border-style: solid; border-color: var(--pink); background: rgba(255,175,204,0.1); }
 .shop-item .icon { font-size: 2.5rem; display: block; margin-bottom: 4px; }
 .shop-item .price { font-size: 0.9rem; color: #777; font-weight: bold; }
-.sound-btn{ background:#f0f0f0; color:var(--text); border: 2px solid transparent; }
-.sound-btn.active{ background:var(--pink); border-color:var(--text); }
 @keyframes float{ 
     0%{ opacity:1; transform:translateY(0); } 
     100%{ opacity:0; transform:translateY(-120px); } 
@@ -71,20 +66,10 @@ button:active{ transform: scale(0.95); }
             <div class="bar" id="bar"></div> 
         </div> 
     </div> 
-    
-    <div class="card" style="text-align:center;">
-        <h2>🎧 Focus Sounds</h2>
-        <button class="sound-btn active" id="sound-none" onclick="setSound('none')">Silence 🔇</button>
-        <button class="sound-btn" id="sound-white" onclick="setSound('white')">White Noise 💨</button>
-        <button class="sound-btn" id="sound-rain" onclick="setSound('rain')">Rain 🌧️</button>
-        <button class="sound-btn" id="sound-cafe" onclick="setSound('cafe')">Cozy Cafe ☕</button>
-    </div>
-
     <div class="card stars"> ⭐ Stars Earned: <span id="stars">0</span> </div> 
     
     <div class="card">
         <h2>🥕 Bunny Dress-Up Shop</h2>
-        <p style="margin:0; font-size:0.9rem; opacity:0.8;">Spend stars to unlock new look variants! Tap an unlocked bunny to equip it.</p>
         <div class="shop-grid" id="shopGrid"></div>
     </div>
 
@@ -119,16 +104,13 @@ const quotes = [
     "🦋 Five minutes counts.", 
     "🍓 Progress is progress.", 
     "🐰 One tiny step at a time.", 
-    "✨ Done is better than perfect.", 
-    "💖 Future you will thank you." 
+    "✨ Done is better than perfect." 
 ]; 
 
 const shopItems = [
     { id: "classic", icon: "🐰", price: 0, name: "Classic" },
     { id: "fancy", icon: "🎩", price: 3, name: "Gentleman" },
-    { id: "royal", icon: "👑", price: 5, name: "Royal Bun" },
-    { id: "cute", icon: "🎀", price: 8, name: "Ribbon Bun" },
-    { id: "wizard", icon: "🧙‍♂️", price: 12, name: "Wizard" }
+    { id: "royal", icon: "👑", price: 5, name: "Royal Bun" }
 ];
 
 document.getElementById("quote").textContent = quotes[Math.floor(Math.random()*quotes.length)]; 
@@ -150,280 +132,114 @@ document.getElementById("stars").textContent = stars;
 document.getElementById("mainBunny").textContent = currentAvatar;
 let timer; 
 
-// Synth & Audio Engine Elements
-let audioCtx = null;
-let noiseNode = null;
-let filterNode = null;
+function updateTimer(){ 
+    let mins = Math.floor(currentTime/60); 
+    let secs = currentTime%60; 
+    document.getElementById("time").textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`; 
+    let percent = (currentTime/totalTime)*100; 
+    document.getElementById("bar").style.width = percent+"%"; 
+    updatePlant(percent);
+} 
 
-function initAudio() {
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-}
-
-function playChime() {
-    try {
-        initAudio();
-        const playTone = (freq, startTime, duration) => {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(freq, startTime);
-            gain.gain.setValueAtTime(0.2, startTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(startTime);
-            osc.stop(startTime + duration);
-        };
-        const now = audioCtx.currentTime;
-        playTone(523.25, now, 0.15); 
-        playTone(659.25, now + 0.1, 0.15); 
-        playTone(783.99, now + 0.2, 0.3); 
-    } catch(e) { console.log(e); }
-}
-
-function generateNoiseBuffer(type) {
-    const bufferSize = 2 * audioCtx.sampleRate;
-    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    let lastOut = 0.0; // For cafe/rain filtering modeling
-    
-    for (let i = 0; i < bufferSize; i++) {
-        const white = Math.random() * 2 - 1;
-        if (type === 'white') {
-            output[i] = white * 0.4;
-        } else if (type === 'rain') {
-            // Pink-brownish heavy crackle
-            lastOut = (lastOut * 0.95) + (white * 0.1);
-            output[i] = lastOut * 0.8 + (Math.random() > 0.98 ? white * 0.15 : 0);
-        } else if (type === 'cafe') {
-            // Low rumble chatter simulation
-            lastOut = (lastOut * 0.98) + (white * 0.05);
-            const clink = Math.sin(i * 0.005) * (Math.random() > 0.9995 ? 0.2 : 0);
-            output[i] = (lastOut * 1.5) + clink;
-        }
-    }
-    return noiseBuffer;
-}
-
-function setSound(type) {
-    try {
-        initAudio();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        
-        // Stop current sound loop if active
-        if (noiseNode) {
-            noiseNode.stop();
-            noiseNode.disconnect();
-            noiseNode = null;
-        }
-        if (filterNode) {
-            filterNode.disconnect();
-            filterNode = null;
-        }
-
-        // Clean UI highlights
-Use code with caution.
-
-document.querySelectorAll('.sound-btn').forEach(b => b.classList.remove('active'));
-document.getElementById(sound-${type}).classList.add('active');
-if (type === 'none') return;
-// Generate synthetic looping sounds safely without external files
-noiseNode = audioCtx.createBufferSource();
-noiseNode.buffer = generateNoiseBuffer(type);
-noiseNode.loop = true;
-filterNode = audioCtx.createBiquadFilter();
-if (type === 'rain') {
-filterNode.type = 'lowpass';
-filterNode.frequency.value = 1200;
-} else if (type === 'cafe') {
-filterNode.type = 'bandpass';
-filterNode.frequency.value = 400;
-filterNode.Q.value = 0.6;
-} else {
-filterNode.type = 'lowpass';
-filterNode.frequency.value = 8000;
-}
-const gainNode = audioCtx.createGain();
-gainNode.gain.value = 0.5;
-noiseNode.connect(filterNode);
-filterNode.connect(gainNode);
-gainNode.connect(audioCtx.destination);
-noiseNode.start();
-} catch (e) {
-console.log("Audio not interacted yet", e);
-}
-}
-function updateTimer(){
-let mins = Math.floor(currentTime/60);
-let secs = currentTime%60;
-document.getElementById("time").textContent = ${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')};
-let percent = (currentTime/totalTime)*100;
-document.getElementById("bar").style.width = percent+"%";
-updatePlant(percent);
-}
 function updatePlant(percent) {
-const plantEl = document.getElementById("plant");
-if (!workMode) {
-plantEl.textContent = "🌸";
-plantEl.style.transform = "scale(1.2)";
-return;
+    const plantEl = document.getElementById("plant");
+    if (!workMode) { plantEl.textContent = "🌸"; return; }
+    if (percent > 60) plantEl.textContent = "🌱";
+    else if (percent > 20) plantEl.textContent = "🌿";
+    else plantEl.textContent = "🪻";
 }
-if (percent > 75) {
-plantEl.textContent = "🌱";
-plantEl.style.transform = "scale(0.8)";
-} else if (percent > 40) {
-plantEl.textContent = "🌿";
-plantEl.style.transform = "scale(1.0)";
-} else if (percent > 10) {
-plantEl.textContent = "🪴";
-plantEl.style.transform = "scale(1.1)";
-} else {
-plantEl.textContent = "🪻";
-plantEl.style.transform = "scale(1.2)";
-}
-}
-function saveSettings() {
-const wVal = Math.max(1, parseInt(document.getElementById("workInput").value) || 25);
-const bVal = Math.max(1, parseInt(document.getElementById("breakInput").value) || 5);
-localStorage.setItem("workTime", wVal);
-localStorage.setItem("breakTime", bVal);
-workTime = wVal * 60;
-breakTime = bVal * 60;
-alert("Settings saved! Resetting timer to apply changes.");
-resetTimer();
-}
-function celebrate(){
-stars++;
-localStorage.setItem("stars",stars);
-document.getElementById("stars").textContent = stars;
-renderShop();
-for(let i=0;i<20;i++){
-let s=document.createElement("div");
-s.className="sparkle";
-s.textContent= Math.random()>.5 ? "✨":"💖";
-s.style.left= Math.random()window.innerWidth+"px";
-s.style.top= window.innerHeight.7+"px";
-document.body.appendChild(s);
-setTimeout(()=>s.remove(),2000);
-}
-}
-function startTimer(){
-if(running) return;
-running=true;
-timer=setInterval(()=>{
-currentTime--;
-if(currentTime<0){
-playChime();
-if(workMode){
-celebrate();
-alert("🎉 Great job! Take a little break.");
-workMode=false;
-currentTime=breakTime;
-totalTime=breakTime;
-document.getElementById("mode").textContent = "Break Time 🌸";
-}else{
-alert("🐰 Break over. Let's do another tiny step.");
-workMode=true;
-currentTime=workTime;
-totalTime=workTime;
-document.getElementById("mode").textContent = "Focus Session";
-}
-}
-updateTimer();
-},1000);
-}
-function pauseTimer(){
-clearInterval(timer);
-running=false;
-}
-function resetTimer(){
-pauseTimer();
-workMode=true;
-currentTime=workTime;
-totalTime=workTime;
-document.getElementById("mode").textContent = "Focus Session";
-updateTimer();
-}
-function renderShop() {
-const grid = document.getElementById("shopGrid");
-grid.innerHTML = "";
-shopItems.forEach(item => {
-const div = document.createElement("div");
-const isUnlocked = unlockedAvatars.includes(item.id);
-div.className = shop-item ${isUnlocked ? 'unlocked' : ''};
-div.innerHTML = <span class="icon">${item.icon}</span> <strong>${item.name}</strong> <span class="price">${isUnlocked ? 'Owned' : '⭐ ' + item.price}</span>;
-div.onclick = () => handleShopClick(item);
-grid.appendChild(div);
-});
-}
-function handleShopClick(item) {
-if (unlockedAvatars.includes(item.id)) {
-currentAvatar = item.icon;
-localStorage.setItem("currentAvatar", currentAvatar);
-document.getElementById("mainBunny").textContent = currentAvatar;
-} else {
-if (stars >= item.price) {
-stars -= item.price;
-unlockedAvatars.push(item.id);
-localStorage.setItem("stars", stars);
-localStorage.setItem("unlockedAvatars", JSON.stringify(unlockedAvatars));
-document.getElementById("stars").textContent = stars;
-currentAvatar = item.icon;
-localStorage.setItem("currentAvatar", currentAvatar);
-document.getElementById("mainBunny").textContent = currentAvatar;
-renderShop();
-} else {
-alert("🐰 You need more stars to unlock this style! Keep studying!");
-}
-}
-}
-function addTask(){
-let input= document.getElementById("taskInput");
-if(!input.value.trim()) return;
-let tasks = JSON.parse(localStorage.getItem("tasks")||"[]");
-tasks.push({ text:input.value, done:false });
-localStorage.setItem("tasks", JSON.stringify(tasks));
-input.value="";
-renderTasks();
-}
-function renderTasks(){
-let tasks= JSON.parse(localStorage.getItem("tasks")||"[]");
-let list= document.getElementById("taskList");
-list.innerHTML="";
-tasks.forEach((task,index)=>{
-let div=document.createElement("div");
-div.className="task";
-div.innerHTML= <span class="${task.done ? 'done':''}"> ${task.text} </span> <div> <button onclick="toggleTask(${index})"> ✓ </button> <button onclick="deleteTask(${index})"> 🗑️ </button> </div> ;
-list.appendChild(div);
-});
-}
-function toggleTask(index){
-let tasks= JSON.parse(localStorage.getItem("tasks")||"[]");
-tasks[index].done= !tasks[index].done;
-localStorage.setItem("tasks", JSON.stringify(tasks));
-renderTasks();
-}
-function deleteTask(index){
-let tasks= JSON.parse(localStorage.getItem("tasks")||"[]");
-tasks.splice(index,1);
-localStorage.setItem("tasks", JSON.stringify(tasks));
-renderTasks();
-}
-function toggleDark(){
-document.body.classList.toggle("dark");
-localStorage.setItem("dark", document.body.classList.contains("dark"));
-}
-// Load initial states
-document.getElementById("focus").value = localStorage.getItem("focus") || "";
-document.getElementById("focus").addEventListener("input",e=>{
-localStorage.setItem("focus", e.target.value);
-});
-if(localStorage.getItem("dark")==="true"){
-document.body.classList.add("dark");
-}
-renderTasks();
-renderShop();
-updateTimer();
 
+function saveSettings() {
+    const wVal = Math.max(1, parseInt(document.getElementById("workInput").value) || 25);
+    const bVal = Math.max(1, parseInt(document.getElementById("breakInput").value) || 5);
+    localStorage.setItem("workTime", wVal);
+    localStorage.setItem("breakTime", bVal);
+    workTime = wVal * 60;
+    breakTime = bVal * 60;
+    resetTimer();
+}
+
+function celebrate(){ 
+    stars++; 
+    localStorage.setItem("stars",stars); 
+    document.getElementById("stars").textContent = stars; 
+    renderShop();
+} 
+
+function startTimer(){ 
+    if(running) return; 
+    running=true; 
+    timer=setInterval(()=>{ 
+        currentTime--; 
+        if(currentTime<0){ 
+            if(workMode){ 
+                celebrate(); 
+                workMode=false; 
+                currentTime=breakTime; 
+                totalTime=breakTime; 
+                document.getElementById("mode").textContent = "Break Time 🌸"; 
+            }else{ 
+                workMode=true; 
+                currentTime=workTime; 
+                totalTime=workTime; 
+                document.getElementById("mode").textContent = "Focus Session"; 
+            } 
+        } 
+        updateTimer(); 
+    },1000); 
+} 
+
+function pauseTimer(){ 
+    clearInterval(timer); 
+    running=false; 
+} 
+
+function resetTimer(){ 
+    pauseTimer(); 
+    workMode=true; 
+    currentTime=workTime; 
+    totalTime=workTime; 
+    document.getElementById("mode").textContent = "Focus Session"; 
+    updateTimer(); 
+} 
+
+function renderShop() {
+    const grid = document.getElementById("shopGrid");
+    grid.innerHTML = "";
+    shopItems.forEach(item => {
+        const div = document.createElement("div");
+        const isUnlocked = unlockedAvatars.includes(item.id);
+        div.className = `shop-item ${isUnlocked ? 'unlocked' : ''}`;
+        div.innerHTML = `
+            <span class="icon">${item.icon}</span>
+            <strong>${item.name}</strong>
+            <span class="price">${isUnlocked ? 'Owned' : '⭐ ' + item.price}</span>
+        `;
+        div.onclick = () => handleShopClick(item);
+        grid.appendChild(div);
+    });
+}
+
+function handleShopClick(item) {
+    if (unlockedAvatars.includes(item.id)) {
+        currentAvatar = item.icon;
+        localStorage.setItem("currentAvatar", currentAvatar);
+        document.getElementById("mainBunny").textContent = currentAvatar;
+    } else {
+        if (stars >= item.price) {
+            stars -= item.price;
+            unlockedAvatars.push(item.id);
+            localStorage.setItem("stars", stars);
+            localStorage.setItem("unlockedAvatars", JSON.stringify(unlockedAvatars));
+            document.getElementById("stars").textContent = stars;
+            currentAvatar = item.icon;
+            localStorage.setItem("currentAvatar", currentAvatar);
+            document.getElementById("mainBunny").textContent = currentAvatar;
+            renderShop();
+        }
+    }
+}
+
+function addTask(){ 
+    let input= document.getElementById("taskInput"); 
+    if(!input.value.trim()) return; 
